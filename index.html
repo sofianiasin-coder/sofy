@@ -25,7 +25,6 @@
             box-shadow: 0 0 15px #10b981, 0 0 30px #10b981; 
         }
         
-        /* تصميم الصفوف الشفافة والمطابقة للعبة الأصلية */
         .game-row-style {
             background: rgba(20, 27, 49, 0.4);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -36,7 +35,6 @@
             border-color: rgba(6, 182, 212, 0.4) !important;
         }
 
-        /* نظام الانقلاب ثلاثي الأبعاد الذكي للخانات الدائرية (3D Round Card Flip) */
         .flip-container {
             perspective: 1000px;
         }
@@ -60,10 +58,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 9999px; /* جعلها دائرية بالكامل مثل اللعبة */
+            border-radius: 9999px;
         }
         .flip-card-front {
-            background: linear-gradient(135deg, #2c1d11 0%, #170e08 100%); /* لون خشبي داكن افتراضي */
+            background: linear-gradient(135deg, #2c1d11 0%, #170e08 100%);
             border: 2px solid rgba(255, 255, 255, 0.1);
             box-shadow: inset 0 4px 6px rgba(0,0,0,0.6), 0 2px 4px rgba(0,0,0,0.4);
         }
@@ -80,7 +78,6 @@
             background-position: center;
         }
 
-        /* المؤشرات الجانبية الصغيرة مثل اللعبة الحقيقية */
         .side-indicator {
             width: 12px;
             height: 24px;
@@ -246,8 +243,44 @@
         let currentUserId = "";
         let currentActiveRow = 1; 
         let gameSessionId = 1; 
+        let currentSecureMatrix = null; // متغير لحفظ المصفوفة المشفرة للعبة الحالية
 
         const multipliers = ["x1.23", "x1.54", "x1.93", "x2.41", "x4.02", "x6.71", "x11.11", "x27.97", "x69.93", "x349.68"];
+
+        // --- الخوارزمية التشفيرية الجديدة (CSPRNG) ---
+        function generateStrongRow(rowNumber) {
+            let safeApplesCount = 2; 
+            if (rowNumber <= 3) {
+                safeApplesCount = 4; 
+            } else if (rowNumber <= 7) {
+                safeApplesCount = 3; 
+            }
+
+            let row = [0, 0, 0, 0, 0];
+            for (let i = 0; i < safeApplesCount; i++) {
+                row[i] = 1;
+            }
+
+            for (let i = row.length - 1; i > 0; i--) {
+                let randomBuffer = new Uint32Array(1);
+                window.crypto.getRandomValues(randomBuffer);
+                let j = randomBuffer[0] % (i + 1);
+                
+                let temp = row[i];
+                row[i] = row[j];
+                row[j] = temp;
+            }
+            return row;
+        }
+
+        function buildSecureGameMatrix() {
+            let gameMatrix = {};
+            for (let i = 1; i <= 10; i++) {
+                gameMatrix[i] = generateStrongRow(i);
+            }
+            return gameMatrix;
+        }
+        // ------------------------------------------
 
         function checkLockPassword() {
             const passwordInput = document.getElementById('lock-password-input').value.trim();
@@ -294,6 +327,10 @@
         function launchAppleScript() {
             document.getElementById('script-launcher').classList.add('hidden');
             document.getElementById('game-matrix-container').classList.remove('hidden');
+            
+            // توليد المصفوفة المشفرة وبدء اللعبة
+            currentSecureMatrix = buildSecureGameMatrix();
+            
             buildMatrix();
             updateRiskIndicator(1);
         }
@@ -304,7 +341,6 @@
             currentActiveRow = 1;
         }
 
-        // بناء مصفوفة اللعبة بخانات دائرية متناسقة ومؤشرات جانبية مطابقة للصورة
         function buildMatrix() {
             const container = document.getElementById('matrix-rows');
             container.innerHTML = "";
@@ -313,22 +349,16 @@
                 const rowIndex = i + 1;
                 const rowHtml = `
                     <div id="row-${rowIndex}" class="game-row-style flex items-center gap-2 p-2 rounded-xl transition-all duration-300">
-                        <!-- مؤشر جانبي تفاعلي شبيه باللعبة الأصلية تماماً -->
                         <div id="indicator-${rowIndex}" class="side-indicator"></div>
-                        
                         <span class="w-12 text-center font-mono text-[10px] font-black text-amber-500 bg-[#0d111e] py-1.5 rounded-md border border-gray-800/80 shadow-inner">${multipliers[i]}</span>
-                        
-                        <!-- الخانات الخمس الدائرية المماثلة للأقراص الخشبية في اللعبة -->
                         <div class="flex-1 grid grid-cols-5 gap-1.5 sm:gap-2">
                             ${[1,2,3,4,5].map(boxNum => `
                                 <div id="box-${rowIndex}-${boxNum}" class="flip-container aspect-square w-full max-w-[56px] mx-auto">
                                     <div class="flip-card-inner w-full h-full">
-                                        <!-- الوجه الأمامي: الفطر المجهول في قرص دائري -->
                                         <div class="flip-card-front">
                                             <img src="./unknown-mushroom.png" alt="?" class="w-6 h-6 sm:w-7 sm:h-7 object-contain opacity-70" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                             <span class="text-xs text-gray-500 font-bold hidden">?</span>
                                         </div>
-                                        <!-- الوجه الخلفي: التفاحة المستهدفة والآمنة -->
                                         <div class="flip-card-back">
                                             <img src="./apple-safe.png" alt="🍎" class="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]" onerror="this.src='https://raw.githubusercontent.com/salih-decor/apple-bot/main/apple-safe.png';">
                                         </div>
@@ -350,7 +380,6 @@
                 if(el && ind) {
                     if(i === currentActiveRow) {
                         el.classList.add('active-row');
-                        // تلوين المؤشر الجانبي الصغير باللون النشط
                         ind.style.background = currentActiveRow <= 3 ? '#10b981' : (currentActiveRow <= 7 ? '#f59e0b' : '#ef4444');
                         ind.style.boxShadow = `0 0 10px ${ind.style.background}`;
                     } else {
@@ -396,18 +425,21 @@
                 document.getElementById('analysis-loader').classList.add('hidden');
                 document.getElementById('analyze-btn').disabled = false;
                 
-                const now = new Date();
-                const min = now.getMinutes(); 
-                const hr = now.getHours();
+                // استخراج بيانات الصف الحالي من الخريطة المشفرة المسبقة
+                const currentRowData = currentSecureMatrix[currentActiveRow];
                 
-                let seedString = `ROUND_${currentUserId}_${currentActiveRow}_${gameSessionId}_${min}_${hr}`;
-                let hashValue = 0;
-                for (let i = 0; i < seedString.length; i++) {
-                    hashValue = (hashValue << 5) - hashValue + seedString.charCodeAt(i);
-                    hashValue |= 0; 
+                // البحث عن أماكن التفاح السليم (التي تحمل رقم 1)
+                let safeIndices = [];
+                for(let i = 0; i < currentRowData.length; i++) {
+                    if(currentRowData[i] === 1) {
+                        safeIndices.push(i + 1); // +1 لتتوافق مع ترقيم الواجهة (1 إلى 5)
+                    }
                 }
                 
-                const strategicBox = Math.abs(hashValue % 5) + 1;
+                // اختيار عشوائي آمن لإحدى الخانات السليمة ليتم إظهارها للمستخدم
+                let randomBuffer = new Uint32Array(1);
+                window.crypto.getRandomValues(randomBuffer);
+                const strategicBox = safeIndices[randomBuffer[0] % safeIndices.length];
                 
                 revealPrediction(currentActiveRow, strategicBox);
                 currentActiveRow++;
@@ -426,6 +458,10 @@
         function resetGame() {
             currentActiveRow = 1;
             gameSessionId++; 
+            
+            // توليد مصفوفة مشفرة جديدة عند بدء جولة جديدة
+            currentSecureMatrix = buildSecureGameMatrix();
+            
             buildMatrix();
             updateRiskIndicator(1);
         }
