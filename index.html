@@ -522,7 +522,7 @@
         }
 
         // =========================================================================
-        // الخوارزمية الجديدة والمطورة للكشف في السكربت الكلاسيكي
+        // الخوارزمية الكلاسيكية: الكشف العشوائي المشفر التام 
         // =========================================================================
         function analyzeNextRow() {
             if(currentActiveRow > 10) return;
@@ -566,29 +566,13 @@
                     if(currentRowData[i] === 1) safeIndices.push(i + 1);
                 }
                 
-                // --- الخوارزمية الذكية (Smart Weighting Algorithm) ---
-                // بدل العشوائية، نعطي وزن لكل مربع بناءً على الـ ID ورقم الصف
-                let bestBox = safeIndices[0];
-                let highestConfidence = -1;
-
-                safeIndices.forEach(index => {
-                    let randomBuffer = new Uint32Array(1);
-                    window.crypto.getRandomValues(randomBuffer);
-                    
-                    // استخراج رقم من معرف المستخدم للربط القوي
-                    let idFactor = currentUserId ? currentUserId.charCodeAt(0) : 1;
-                    
-                    // حساب درجة الثقة للمربع الحالي
-                    let confidenceScore = (randomBuffer[0] % 50) + (index * 5) + (currentActiveRow * 2) + idFactor;
-                    
-                    if (confidenceScore > highestConfidence) {
-                        highestConfidence = confidenceScore;
-                        bestBox = index;
-                    }
-                });
-
-                const strategicBox = bestBox;
-                // --------------------------------------------------------
+                // --- الخوارزمية الكلاسيكية السابقة المشفرة ---
+                // اختيار تفاحة واحدة آمنة بشكل عشوائي مشفر باستخدام window.crypto
+                let randomBuffer = new Uint32Array(1);
+                window.crypto.getRandomValues(randomBuffer);
+                let randomIndex = randomBuffer[0] % safeIndices.length;
+                const strategicBox = safeIndices[randomIndex];
+                // ----------------------------------------------
                 
                 const targetBox = document.getElementById(`box-${currentActiveRow}-${strategicBox}`);
                 if(targetBox) {
